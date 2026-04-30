@@ -177,7 +177,9 @@ class RegisterController extends BaseController
         $email->attach($qrPath, 'inline', $code . '.png', 'image/png');
 
         if (!$email->send(false)) {
-            log_message('error', 'Email send failed: ' . $email->printDebugger(['headers', 'subject']));
+            error_log('EMAIL FAILED: ' . $email->printDebugger(['headers', 'subject']));
+        } else {
+            error_log('EMAIL SENT OK to ' . $this->request->getPost('email'));
         }
     }
 
