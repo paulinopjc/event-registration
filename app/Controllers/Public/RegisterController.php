@@ -161,25 +161,51 @@ class RegisterController extends BaseController
 
     private function sendConfirmationEmail(array $event, string $code, array $ticket, string $qrPath)
     {
-        $email = \Config\Services::email();
-        $email->setTo($this->request->getPost('email'));
-        $email->setSubject("Registration Confirmed: {$event['name']}");
+        $recipientEmail = $this->request->getPost('email');
+        $recipientName = $this->request->getPost('first_name') . ' ' . $this->request->getPost('last_name');
 
-        $data = [
+        $htmlContent = view('emails/confirmation', [
             'event' => $event,
             'code' => $code,
             'ticket' => $ticket,
-            'name' => $this->request->getPost('first_name') . ' ' . $this->request->getPost('last_name'),
+            'name' => $recipientName,
+        ]);
+
+        $qrBase64 = base64_encode(file_get_contents($qrPath));
+
+        $payload = [
+            'sender' => [
+                'name' => getenv('EMAIL_FROM_NAME') ?: 'Event Platform',
+                'email' => getenv('EMAIL_FROM') ?: 'noreply@events.test',
+            ],
+            'to' => [['email' => $recipientEmail, 'name' => $recipientName]],
+            'subject' => "Registration Confirmed: {$event['name']}",
+            'htmlContent' => $htmlContent,
+            'attachment' => [[
+                'content' => $qrBase64,
+                'name' => $code . '.png',
+            ]],
         ];
 
-        $email->setMessage(view('emails/confirmation', $data));
-        $email->setMailType('html');
-        $email->attach($qrPath, 'inline', $code . '.png', 'image/png');
+        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_HTTPHEADER => [
+                'accept: application/json',
+                'api-key: ' . getenv('BREVO_API_KEY'),
+                'content-type: application/json',
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+        ]);
 
-        if (!$email->send(false)) {
-            error_log('EMAIL FAILED: ' . $email->printDebugger(['headers', 'subject']));
-        } else {
-            error_log('EMAIL SENT OK to ' . $this->request->getPost('email'));
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 201) {
+            error_log("BREVO API FAILED (HTTP $httpCode): $response");
         }
     }
 
