@@ -9,7 +9,6 @@ use App\Models\RegistrationModel;
 use App\Models\CustomFieldModel;
 use App\Models\CustomFieldValueModel;
 use chillerlan\QRCode\QRCode;
-use chillerlan\QRCode\QROptions;
 
 class RegisterController extends BaseController
 {
@@ -114,12 +113,11 @@ class RegisterController extends BaseController
         $qrDir = WRITEPATH . 'qrcodes/';
         if (!is_dir($qrDir)) mkdir($qrDir, 0755, true);
 
-        $options = new QROptions([
-            'outputType' => QRCode::OUTPUT_IMAGE_PNG,
+        $qrImage = (new QRCode([
+            'outputType' => 'png',
             'scale' => 10,
             'imageBase64' => false,
-        ]);
-        $qrImage = (new QRCode($options))->render($code);
+        ]))->render($code);
         $qrPath = $qrDir . $code . '.png';
         file_put_contents($qrPath, $qrImage);
 
