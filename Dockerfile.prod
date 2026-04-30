@@ -15,7 +15,24 @@ RUN composer install --no-dev --optimize-autoloader
 
 EXPOSE 10000
 
-CMD printenv | grep -E '^(CI_ENVIRONMENT|app\.|database\.|email\.|GOOGLE_)' | sed 's/=/= /' > .env && \
+CMD echo "CI_ENVIRONMENT = ${CI_ENVIRONMENT:-production}" > .env && \
+    echo "app.baseURL = ${APP_BASE_URL:-http://localhost:10000}" >> .env && \
+    echo "database.default.hostname = ${DB_HOST:-localhost}" >> .env && \
+    echo "database.default.database = ${DB_NAME:-event_registration}" >> .env && \
+    echo "database.default.username = ${DB_USER:-postgres}" >> .env && \
+    echo "database.default.password = ${DB_PASS:-postgres}" >> .env && \
+    echo "database.default.DBDriver = Postgre" >> .env && \
+    echo "database.default.port = ${DB_PORT:-5432}" >> .env && \
+    echo "database.default.charset = utf8" >> .env && \
+    echo "GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID:-}" >> .env && \
+    echo "email.fromEmail = ${EMAIL_FROM:-noreply@events.test}" >> .env && \
+    echo "email.fromName = \"${EMAIL_FROM_NAME:-Event Platform}\"" >> .env && \
+    echo "email.protocol = smtp" >> .env && \
+    echo "email.SMTPHost = ${SMTP_HOST:-}" >> .env && \
+    echo "email.SMTPPort = ${SMTP_PORT:-2525}" >> .env && \
+    echo "email.SMTPUser = ${SMTP_USER:-}" >> .env && \
+    echo "email.SMTPPass = ${SMTP_PASS:-}" >> .env && \
+    echo "email.SMTPCrypto = tls" >> .env && \
     php spark migrate --all && \
     php spark db:seed AdminSeeder && \
     php spark serve --host 0.0.0.0 --port 10000
