@@ -61,26 +61,55 @@ class AttendeeController extends BaseController
         $ticketModel = new \App\Models\TicketTypeModel();
         $ticket = $ticketModel->find($registration['ticket_type_id']);
 
-        // Resend confirmation email
-        $email = \Config\Services::email();
-        $email->setTo($registration['email']);
-        $email->setSubject("Registration Confirmed: {$event['name']}");
+        // Resend confirmation email via Brevo HTTP API
+        $recipientName = $registration['first_name'] . ' ' . $registration['last_name'];
+        $code = $registration['confirmation_code'];
 
-        $data = [
+        $htmlContent = view('emails/confirmation', [
             'event' => $event,
-            'code' => $registration['confirmation_code'],
+            'code' => $code,
             'ticket' => $ticket,
-            'name' => $registration['first_name'] . ' ' . $registration['last_name'],
+            'name' => $recipientName,
+        ]);
+
+        $payload = [
+            'sender' => [
+                'name' => getenv('EMAIL_FROM_NAME') ?: 'Event Platform',
+                'email' => getenv('EMAIL_FROM') ?: 'noreply@events.test',
+            ],
+            'to' => [['email' => $registration['email'], 'name' => $recipientName]],
+            'subject' => "Registration Confirmed: {$event['name']}",
+            'htmlContent' => $htmlContent,
         ];
 
-        $email->setMessage(view('emails/confirmation', $data));
-        $email->setMailType('html');
-
         if ($registration['qr_code_path'] && file_exists($registration['qr_code_path'])) {
-            $email->attach($registration['qr_code_path'], 'inline', $registration['confirmation_code'] . '.png', 'image/png');
+            $payload['attachment'] = [[
+                'content' => base64_encode(file_get_contents($registration['qr_code_path'])),
+                'name' => $code . '.png',
+            ]];
         }
 
-        $email->send();
+        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_HTTPHEADER => [
+                'accept: application/json',
+                'api-key: ' . getenv('BREVO_API_KEY'),
+                'content-type: application/json',
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 201) {
+            error_log("BREVO RESEND FAILED (HTTP $httpCode): $response");
+            return redirect()->back()->with('error', 'Failed to resend email');
+        }
 
         return redirect()->back()->with('success', 'Confirmation email resent');
     }
