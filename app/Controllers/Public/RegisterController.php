@@ -9,6 +9,7 @@ use App\Models\RegistrationModel;
 use App\Models\CustomFieldModel;
 use App\Models\CustomFieldValueModel;
 use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\Output\QRGdImagePNG;
 
 class RegisterController extends BaseController
 {
@@ -113,13 +114,15 @@ class RegisterController extends BaseController
         $qrDir = WRITEPATH . 'qrcodes/';
         if (!is_dir($qrDir)) mkdir($qrDir, 0755, true);
 
-        $qrImage = (new QRCode([
-            'outputType' => 'png',
+        $qrDataUri = (new QRCode([
+            'outputInterface' => QRGdImagePNG::class,
             'scale' => 10,
-            'imageBase64' => false,
         ]))->render($code);
+
+        // Extract base64 from data URI (data:image/png;base64,xxxxx)
+        $qrBase64 = explode(',', $qrDataUri, 2)[1];
         $qrPath = $qrDir . $code . '.png';
-        file_put_contents($qrPath, $qrImage);
+        file_put_contents($qrPath, base64_decode($qrBase64));
 
         // Save registration
         $regModel = new RegistrationModel();
@@ -154,12 +157,12 @@ class RegisterController extends BaseController
         }
 
         // Send confirmation email
-        $this->sendConfirmationEmail($event, $code, $ticket, $qrPath);
+        $this->sendConfirmationEmail($event, $code, $ticket, $qrBase64);
 
         return redirect()->to("/registration/{$code}");
     }
 
-    private function sendConfirmationEmail(array $event, string $code, array $ticket, string $qrPath)
+    private function sendConfirmationEmail(array $event, string $code, array $ticket, string $qrBase64)
     {
         $recipientEmail = $this->request->getPost('email');
         $recipientName = $this->request->getPost('first_name') . ' ' . $this->request->getPost('last_name');
@@ -170,8 +173,6 @@ class RegisterController extends BaseController
             'ticket' => $ticket,
             'name' => $recipientName,
         ]);
-
-        $qrBase64 = base64_encode(file_get_contents($qrPath));
 
         $payload = [
             'sender' => [
