@@ -13,8 +13,7 @@ class EventController extends BaseController
     public function index()
     {
         $eventModel = new EventModel();
-        $events = $eventModel->where('user_id', session()->get('user_id'))
-            ->orderBy('created_at', 'DESC')
+        $events = $eventModel->orderBy('created_at', 'DESC')
             ->findAll();
 
         return view('admin/events/index', ['events' => $events]);
@@ -38,6 +37,7 @@ class EventController extends BaseController
             'event_date' => $this->request->getPost('event_date'),
             'event_end_date' => $this->request->getPost('event_end_date'),
             'status' => 'draft',
+            'is_restricted' => $this->request->getPost('is_restricted') ? true : false,
         ];
 
         // Handle banner upload

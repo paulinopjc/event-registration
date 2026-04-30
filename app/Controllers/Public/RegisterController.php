@@ -8,6 +8,7 @@ use App\Models\TicketTypeModel;
 use App\Models\RegistrationModel;
 use App\Models\CustomFieldModel;
 use App\Models\CustomFieldValueModel;
+use App\Models\GuestListModel;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\Output\QRGdImagePNG;
 
@@ -110,19 +111,33 @@ class RegisterController extends BaseController
             $code = RegistrationModel::generateCode();
         }
 
-        // Generate QR code
-        $qrDir = WRITEPATH . 'qrcodes/';
-        if (!is_dir($qrDir)) mkdir($qrDir, 0755, true);
+        // Determine status for restricted events
+        $status = 'confirmed';
+        $guest = null;
 
-        $qrDataUri = (new QRCode([
-            'outputInterface' => QRGdImagePNG::class,
-            'scale' => 10,
-        ]))->render($code);
+        if ($event['is_restricted']) {
+            $guestModel = new GuestListModel();
+            $guest = $guestModel->findByEmail($event['id'], $this->request->getPost('email'));
+            $status = $guest ? 'confirmed' : 'pending';
+        }
 
-        // Extract base64 from data URI (data:image/png;base64,xxxxx)
-        $qrBase64 = explode(',', $qrDataUri, 2)[1];
-        $qrPath = $qrDir . $code . '.png';
-        file_put_contents($qrPath, base64_decode($qrBase64));
+        // Generate QR code only for confirmed registrations
+        $qrPath = null;
+        $qrBase64 = null;
+
+        if ($status === 'confirmed') {
+            $qrDir = WRITEPATH . 'qrcodes/';
+            if (!is_dir($qrDir)) mkdir($qrDir, 0755, true);
+
+            $qrDataUri = (new QRCode([
+                'outputInterface' => QRGdImagePNG::class,
+                'scale' => 10,
+            ]))->render($code);
+
+            $qrBase64 = explode(',', $qrDataUri, 2)[1];
+            $qrPath = $qrDir . $code . '.png';
+            file_put_contents($qrPath, base64_decode($qrBase64));
+        }
 
         // Save registration
         $regModel = new RegistrationModel();
@@ -135,10 +150,16 @@ class RegisterController extends BaseController
             'email' => $this->request->getPost('email'),
             'phone' => $this->request->getPost('phone'),
             'company' => $this->request->getPost('company'),
+            'status' => $status,
             'qr_code_path' => $qrPath,
         ]);
 
         $registrationId = $regModel->getInsertID();
+
+        // Mark guest as registered if on the guest list
+        if ($guest) {
+            $guestModel->markRegistered($guest['id'], $registrationId);
+        }
 
         // Save custom field values
         $fieldModel = new CustomFieldModel();
@@ -156,8 +177,10 @@ class RegisterController extends BaseController
             }
         }
 
-        // Send confirmation email
-        $this->sendConfirmationEmail($event, $code, $ticket, $qrBase64);
+        // Send confirmation email only for confirmed registrations
+        if ($status === 'confirmed') {
+            $this->sendConfirmationEmail($event, $code, $ticket, $qrBase64);
+        }
 
         return redirect()->to("/registration/{$code}");
     }

@@ -35,6 +35,11 @@
                 <label class="form-label">Banner Image</label>
                 <input type="file" name="banner_image" class="form-control" accept="image/*">
             </div>
+            <div class="form-check mb-3">
+                <input type="checkbox" name="is_restricted" value="1" class="form-check-input" id="isRestricted" <?= old('is_restricted') ? 'checked' : '' ?>>
+                <label class="form-check-label" for="isRestricted">Restricted Event (invite-only, hidden from public listing)</label>
+                <div class="form-text">Restricted events require registrants to be on a guest list or receive admin approval.</div>
+            </div>
         </div>
     </div>
 

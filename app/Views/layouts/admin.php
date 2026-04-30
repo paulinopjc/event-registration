@@ -12,7 +12,8 @@
             <div class="container-fluid">
                 <a class="navbar-brand" href="/admin/dashboard">Event Platform</a>
                 <div class="d-flex align-items-center">
-                    <span class="text-light me-3"><?= session()->get('user_name') ?></span>
+                    <span class="text-light me-2"><?= session()->get('user_name') ?></span>
+                    <span class="badge bg-<?= session()->get('user_role') === 'admin' ? 'danger' : (session()->get('user_role') === 'editor' ? 'info' : 'secondary') ?> me-3"><?= ucfirst(session()->get('user_role')) ?></span>
                     <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
                 </div>
             </div>
@@ -29,9 +30,16 @@
                         <li class="nav-item">
                             <a class="nav-link" href="/admin/events"><i class="bi bi-calendar-event me-2"></i>Events</a>
                         </li>
+                        <?php if (in_array(session()->get('user_role'), ['admin', 'editor'])): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/admin/events/create"><i class="bi bi-plus-circle me-2"></i>Create Event</a>
                         </li>
+                        <?php endif; ?>
+                        <?php if (session()->get('user_role') === 'admin'): ?>
+                        <li class="nav-item mt-3">
+                            <a class="nav-link" href="/admin/users"><i class="bi bi-people me-2"></i>Users</a>
+                        </li>
+                        <?php endif; ?>
                     </ul>
                 </div>
             </div>
@@ -43,6 +51,15 @@
                 <?php endif; ?>
                 <?php if (session()->getFlashdata('error')): ?>
                     <div class="alert alert-danger"><?= session()->getFlashdata('error') ?></div>
+                <?php endif; ?>
+                <?php if (session()->getFlashdata('errors')): ?>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            <?php foreach (session()->getFlashdata('errors') as $err): ?>
+                                <li><?= esc($err) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
                 <?php endif; ?>
 
                 <?= $this->renderSection('content') ?>

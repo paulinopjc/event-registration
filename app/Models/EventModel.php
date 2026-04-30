@@ -11,7 +11,7 @@ class EventModel extends Model
     protected $allowedFields = [
         'user_id', 'name', 'slug', 'description', 'venue',
         'event_date', 'event_end_date', 'banner_image',
-        'status', 'max_registrations',
+        'status', 'max_registrations', 'is_restricted',
     ];
     protected $useTimestamps = true;
     protected $validationRules = [
@@ -28,6 +28,7 @@ class EventModel extends Model
     public function getPublished()
     {
         return $this->where('status', 'published')
+            ->where('is_restricted', false)
             ->orderBy('event_date', 'ASC')
             ->findAll();
     }

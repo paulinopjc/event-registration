@@ -13,29 +13,15 @@ class DashboardController extends BaseController
         $eventModel = new EventModel();
         $registrationModel = new RegistrationModel();
 
-        $userId = session()->get('user_id');
+        $totalEvents = $eventModel->countAllResults();
+        $publishedEvents = $eventModel->where('status', 'published')->countAllResults();
 
-        $totalEvents = $eventModel->where('user_id', $userId)->countAllResults();
-        $publishedEvents = $eventModel->where('user_id', $userId)->where('status', 'published')->countAllResults();
+        $totalRegistrations = $registrationModel->where('status !=', 'cancelled')
+            ->where('status !=', 'rejected')
+            ->countAllResults();
+        $checkedIn = $registrationModel->where('status', 'checked_in')->countAllResults();
 
-        $eventIds = array_column(
-            $eventModel->select('id')->where('user_id', $userId)->findAll(),
-            'id'
-        );
-
-        $totalRegistrations = 0;
-        $checkedIn = 0;
-        if (!empty($eventIds)) {
-            $totalRegistrations = $registrationModel->whereIn('event_id', $eventIds)
-                ->where('status !=', 'cancelled')
-                ->countAllResults();
-            $checkedIn = $registrationModel->whereIn('event_id', $eventIds)
-                ->where('status', 'checked_in')
-                ->countAllResults();
-        }
-
-        $recentEvents = $eventModel->where('user_id', $userId)
-            ->orderBy('created_at', 'DESC')
+        $recentEvents = $eventModel->orderBy('created_at', 'DESC')
             ->limit(5)
             ->findAll();
 
