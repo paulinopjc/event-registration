@@ -33,6 +33,7 @@ CMD echo "CI_ENVIRONMENT = ${CI_ENVIRONMENT:-production}" > .env && \
     echo "email.SMTPUser = ${SMTP_USER:-}" >> .env && \
     echo "email.SMTPPass = ${SMTP_PASS:-}" >> .env && \
     echo "email.SMTPCrypto = tls" >> .env && \
+    echo "email.SMTPAuthMethod = login" >> .env && \
     php spark migrate --all && \
     php spark db:seed AdminSeeder && \
     php spark serve --host 0.0.0.0 --port 10000

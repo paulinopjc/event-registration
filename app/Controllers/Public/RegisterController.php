@@ -175,7 +175,10 @@ class RegisterController extends BaseController
         $email->setMessage(view('emails/confirmation', $data));
         $email->setMailType('html');
         $email->attach($qrPath, 'inline', $code . '.png', 'image/png');
-        $email->send();
+
+        if (!$email->send(false)) {
+            log_message('error', 'Email send failed: ' . $email->printDebugger(['headers', 'subject']));
+        }
     }
 
     public function confirmation(string $code)
