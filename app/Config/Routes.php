@@ -4,12 +4,7 @@ use CodeIgniter\Router\RouteCollection;
 
 /** @var RouteCollection $routes */
 
-$routes->get('/', static function () {
-    if (session()->get('logged_in')) {
-        return redirect()->to('/admin/dashboard');
-    }
-    return redirect()->to('/login');
-});
+$routes->get('/', 'Public\HomeController::index');
 
 // Auth
 $routes->get('login', 'Auth\LoginController::index');
